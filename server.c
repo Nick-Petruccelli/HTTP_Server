@@ -45,7 +45,7 @@ int main() {
   uint8_t recived_line[MAX_LINES + 1];
   uint8_t buff[MAX_LINES + 1];
   int n;
-  uint8_t address[40];
+  char address[40];
 
   printf("SERVER RUNNING\n");
   printf("----------------\n");
@@ -62,19 +62,23 @@ int main() {
       int i = 0;
       int j = 0;
       bool reading_address = false;
+      memset(address, 0, 40);
       while (recived_line[i] != '\n') {
+        printf("%c", recived_line[i]);
         if (reading_address) {
           address[j] = recived_line[i];
           i++;
           j++;
           if (recived_line[i] == ' ') {
+            printf("\n");
             break;
           }
+        } else {
+          if (recived_line[i] == ' ') {
+            reading_address = true;
+          }
+          i++;
         }
-        if (recived_line[i] == ' ') {
-          reading_address = true;
-        }
-        i++;
       }
       address[j] = '\0';
       printf("Address: %s\n", address);
@@ -90,7 +94,16 @@ int main() {
       // TODO: Handle errors
     }
 
-    fileptr = fopen("index.html", "r");
+    if (strcmp(address, "/") == 0) {
+      fileptr = fopen("index.html", "r");
+    } else if (strcmp(address, "/page2") == 0) {
+      fileptr = fopen("page2.html", "r");
+    } else {
+      snprintf((char *)buff, sizeof(buff), "HTTP/1.0 404 NOT FOUND\r\n");
+      write(conn_fd, (char *)buff, strlen((char *)buff));
+      close(conn_fd);
+      continue;
+    }
     char html[MAX_LINES - 45];
     char line[100];
     while (true) {
@@ -101,10 +114,12 @@ int main() {
     }
     fclose(fileptr);
     printf("Sent:\n%s\n", html);
+    memset(buff, 0, MAX_LINES);
     snprintf((char *)buff, sizeof(buff),
              "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n%s\n", html);
 
-    memset(address, 0, 40);
+    memset(html, 0, MAX_LINES - 45);
+    memset(line, 0, 100);
     write(conn_fd, (char *)buff, strlen((char *)buff));
     close(conn_fd);
   }
